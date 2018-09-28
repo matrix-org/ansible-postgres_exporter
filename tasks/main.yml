@@ -1,0 +1,78 @@
+---
+- name: Ensure dependencies installed
+  apt: 
+    name: git,make,golang
+    state: installed
+
+- name: Create user
+  user:
+    name: prometheus
+    state: present
+    create_home: no
+    shell: /bin/bash
+
+- name: Make directory
+  file:
+    path: /opt/postgres_exporter
+    state: directory
+    owner: prometheus
+    group: prometheus
+
+- name: Make src directory
+  file:
+    path: /opt/postgres_exporter/src
+    state: directory
+    owner: prometheus
+    group: prometheus
+
+
+- name: checkout postgres_exporter
+  git:
+    repo: https://github.com/matrix-org/postgres_exporter.git
+    dest: /opt/postgres_exporter/src/postgres_exporter
+    version: matrix.org
+  become: true
+  become_user: prometheus
+  vars:
+    ansible_ssh_pipelining: true
+
+- name: Go Get (?)
+  command: go get
+  args:
+    chdir: /opt/postgres_exporter/src/postgres_exporter/
+  environment:
+    GOPATH: /opt/postgres_exporter/
+
+- name: Build
+  make:
+    chdir: /opt/postgres_exporter/src/postgres_exporter/
+    target: binary
+  environment:
+    GOPATH: /opt/postgres_exporter/
+
+- name: Template queries.yaml
+  template:
+    src: queries.yaml.j2
+    dest: /opt/postgres_exporter/queries.yaml
+    owner: prometheus
+    group: prometheus
+  notify:
+    - "restart postgres_exporter"
+
+- name: Create systemd config
+  template:
+    src: postgres_exporter.service.j2
+    dest: /etc/systemd/system/postgres_exporter.service
+    owner: root
+  notify:
+    - "reload systemd"
+    - "restart postgres_exporter"
+
+- name: "Flush handlers"
+  meta: flush_handlers
+
+- name: enable postgres_exporter and ensure running
+  service:
+    name: postgres_exporter
+    state: started
+    enabled: yes

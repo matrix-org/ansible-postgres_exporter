@@ -1,0 +1,18 @@
+[Unit]
+Description="Prometheus Postgres Exporter (postgres_exporter)"
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/postgres_exporter
+# and the award for the most uses of the name of the app in a single commandline goes to:
+ExecStart=/opt/postgres_exporter/src/postgres_exporter/postgres_exporter --web.listen-address=:9113 --extend.query-path="/opt/postgres_exporter/queries.yaml"
+User=prometheus
+Group=prometheus
+Restart=always
+StandardOut=syslog
+SyslogIdentifier=postgres_exporter
+SyslogFacility=local3
+Env=DATA_SOURCE_NAME="host=/tmp dbname=matrix"
+[Install]
+WantedBy=default.target
+
