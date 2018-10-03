@@ -6,24 +6,23 @@
 
 - name: Create user
   user:
-    name: prometheus
+    name: postgres
     state: present
     create_home: no
-    shell: /bin/bash
 
 - name: Make directory
   file:
     path: /opt/postgres_exporter
     state: directory
-    owner: prometheus
-    group: prometheus
+    owner: postgres
+    group: postgres
 
 - name: Make src directory
   file:
     path: /opt/postgres_exporter/src
     state: directory
-    owner: prometheus
-    group: prometheus
+    owner: postgres
+    group: postgres
 
 
 - name: checkout postgres_exporter
@@ -32,7 +31,7 @@
     dest: /opt/postgres_exporter/src/postgres_exporter
     version: matrix.org
   become: true
-  become_user: prometheus
+  become_user: postgres
   vars:
     ansible_ssh_pipelining: true
 
@@ -54,8 +53,8 @@
   template:
     src: queries.yaml.j2
     dest: /opt/postgres_exporter/queries.yaml
-    owner: prometheus
-    group: prometheus
+    owner: postgres
+    group: postgres
   notify:
     - "restart postgres_exporter"
 
