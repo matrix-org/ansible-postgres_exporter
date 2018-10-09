@@ -12,7 +12,7 @@ Restart=always
 StandardOut=syslog
 SyslogIdentifier=postgres_exporter
 SyslogFacility=local3
-Environment=DATA_SOURCE_NAME="{{ postgres_exporter_data_source_name }}"
+Environment="DATA_SOURCE_NAME={{ postgres_exporter_data_source_name }}"
 [Install]
 WantedBy=default.target
 
