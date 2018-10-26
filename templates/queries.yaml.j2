@@ -157,7 +157,7 @@ pg_rel_vacuum_stats:
     SELECT
       ns.nspname AS schemaname,
       tbl.relname,
-      greatest(age(tbl.relfrozenxid), age(toast.relfrozenxid)) AS frozenxid_age,
+      greatest(age(tbl.relfrozenxid), age(toast.relfrozenxid)) AS frozenxid_age
     FROM pg_class AS tbl
       JOIN pg_namespace AS ns ON ns.oid = tbl.relnamespace
       LEFT JOIN pg_class AS toast ON tbl.reltoastrelid = toast.oid
@@ -170,18 +170,5 @@ pg_rel_vacuum_stats:
         usage: LABEL
         description: "Name of this relation"
     - frozenxid_age:
-        usage: GUAGE
+        usage: GAUGE
         description: "Number of transactions since this table had a full-table vacuum"
-
-pg_settings:
-  query: |
-    SELECT name, setting FROM pg_settings WHERE name IN (
-        'autovacuum_freeze_max_age'
-    )
-  metrics:
-    - name:
-        usage: LABEL
-        description: "Name of this configuration setting"
-    - setting:
-        usage: GUAGE
-        description: "Value of this configuration setting"
