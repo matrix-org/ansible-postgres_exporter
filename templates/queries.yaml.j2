@@ -14,10 +14,10 @@ pg_rel_storage_stats:
       reltuples,
       toasttuples,
       current_setting('block_size')::numeric AS page_size,
-  
+
       -- bytes of header per page (24 bytes since about postgres 8)
       24 AS page_hdr_size,
-  
+
       -- 'special space' per page
       page_special_data_size
     FROM (
@@ -29,38 +29,38 @@ pg_rel_storage_stats:
         tbl.relpages AS heappages,
         COALESCE(toast.relpages, 0) AS toastpages,
         COALESCE(toast.reltuples, 0) AS toasttuples,
-  
+
         -- size of the header of each tuple (pre-padding)
         23
           -- t_infomask doesn't seem to be exposed, so let's assume that all
           -- rows have null bitmap if any of the columns have a non-zero null
           -- fraction
           + CASE WHEN hasnull THEN ( 7 + col_count ) / 8 ELSE 0::int END
-          
+
           + CASE WHEN tbl.relhasoids THEN 4 ELSE 0 END -- oid storage
           AS tpl_hdr_size,
-  
+
         -- size of the data for each tuple (pre-padding)
         tpl_data_size,
 
         -- normal tables have no special data
         0 AS page_special_data_size
-  
+
       FROM pg_class AS tbl
         JOIN pg_namespace AS ns ON ns.oid = tbl.relnamespace
         LEFT JOIN pg_class AS toast ON tbl.reltoastrelid = toast.oid
-  
+
         JOIN (
           SELECT schemaname as nspname, tablename as relname,
               SUM((1-null_frac) * avg_width) AS tpl_data_size,
               COUNT(*) AS col_count,
-  
+
               MAX(null_frac) > 0 AS hasnull
           FROM pg_stats
           WHERE inherited=false
           GROUP BY 1,2
         ) s0 ON (s0.nspname = ns.nspname AND s0.relname=tbl.relname)
-  
+
       WHERE
         -- only include tables (some indexes also have stats)
         tbl.relkind = 'r'
@@ -70,7 +70,7 @@ pg_rel_storage_stats:
           SELECT attrelid FROM pg_attribute att
           WHERE att.atttypid = 'pg_catalog.name'::regtype
         )
-  
+
       UNION
 
       -- b-tree indexes
@@ -79,15 +79,15 @@ pg_rel_storage_stats:
         relname,
         reltuples,
         relpages AS heappages,
-  
+
         -- indexes don't have toasts
         0 AS toastpages,
         0 AS toasttuples,
-  
+
         -- per tuple header: IndexTupleData, plus optional
         -- IndexAttributeBitMapData
         8 + CASE WHEN hasnull THEN 4 ELSE 0 END AS tpl_hdr_size,
-  
+
         -- estimate the size of each index entry from the sum of the average
         -- size of the corresponding fields in the table.
         --
@@ -102,21 +102,21 @@ pg_rel_storage_stats:
              AND s.starelid = relatt.attrelid
              AND s.staattnum = relatt.attnum
         ) AS tpl_data_size,
-  
+
         -- per page btree opaque data
         16 AS page_special_data_size
-  
+
       FROM pg_index
         JOIN pg_class ON pg_class.oid = pg_index.indexrelid
         JOIN pg_namespace ns ON ns.oid = pg_class.relnamespace
         JOIN pg_am am ON pg_class.relam = am.oid
-  
+
         JOIN (
           SELECT attrelid, NOT BOOL_AND(attnotnull) AS hasnull
           FROM pg_attribute att
           GROUP BY attrelid
         ) att ON att.attrelid = pg_index.indrelid
-  
+
       WHERE pg_index.indisvalid AND pg_class.relpages > 0
         AND am.amname = 'btree'
     ) AS s;
@@ -180,3 +180,37 @@ pg_stat_activity_autovacuum:
     - count:
         usage: GAUGE
         description: "Number of active autovacuum processes"
+
+pg_statio_all_tables:
+  query: "SELECT schemaname, relname, heap_blks_read, heap_blks_hit, idx_blks_read, idx_blks_hit, toast_blks_read, toast_blks_hit, tidx_blks_read, tidx_blks_hit FROM pg_statio_all_tables"
+  metrics:
+    - schemaname:
+        usage: "LABEL"
+        description: "Name of the schema that this table is in"
+    - relname:
+        usage: "LABEL"
+        description: "Name of this table"
+    - heap_blks_read:
+        usage: "COUNTER"
+        description: "Number of disk blocks read from this table"
+    - heap_blks_hit:
+        usage: "COUNTER"
+        description: "Number of buffer hits in this table"
+    - idx_blks_read:
+        usage: "COUNTER"
+        description: "Number of disk blocks read from all indexes on this table"
+    - idx_blks_hit:
+        usage: "COUNTER"
+        description: "Number of buffer hits in all indexes on this table"
+    - toast_blks_read:
+        usage: "COUNTER"
+        description: "Number of disk blocks read from this table's TOAST table (if any)"
+    - toast_blks_hit:
+        usage: "COUNTER"
+        description: "Number of buffer hits in this table's TOAST table (if any)"
+    - tidx_blks_read:
+        usage: "COUNTER"
+        description: "Number of disk blocks read from this table's TOAST table indexes (if any)"
+    - tidx_blks_hit:
+        usage: "COUNTER"
+        description: "Number of buffer hits in this table's TOAST table indexes (if any)"
