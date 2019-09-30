@@ -292,3 +292,117 @@ pg_stat_statements:
     - blk_write_time:
         usage: "COUNTER"
         description: "Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)"
+
+
+pg_stat_activity_state:
+  query: |
+    SELECT
+      usename,
+      datname,
+      application_name,
+      state,
+      COUNT(*)
+    FROM pg_stat_activity
+    WHERE usename IS NOT NULL AND datname IS NOT NULL
+    GROUP BY datname, usename, application_name, state;
+
+  metrics:
+    - usename:
+        usage: "LABEL"
+        description: "Name of the user logged into this backend"
+    - datname:
+        usage: "LABEL"
+        description: "Name of the database this backend is connected to"
+    - application_name:
+        usage: "LABEL"
+        description: "Name of the application that is connected to this backend"
+    - state:
+        usage: "LABEL"
+        description: "Current overall state of this backend"
+    - total:
+        usage: "GAUGE"
+        description: "Total number of backends in this state"
+
+
+pg_stat_activity_wait:
+  query: |
+    SELECT
+      datname,
+      usename,
+      application_name,
+      wait_event_type, wait_event,
+      COUNT(*)
+    FROM pg_stat_activity
+    WHERE usename IS NOT NULL AND datname IS NOT NULL
+    GROUP BY datname, usename, application_name, wait_event_type, wait_event;
+
+  metrics:
+    - usename:
+        usage: "LABEL"
+        description: "Name of the user logged into this backend"
+    - datname:
+        usage: "LABEL"
+        description: "Name of the database this backend is connected to"
+    - application_name:
+        usage: "LABEL"
+        description: "Name of the application that is connected to this backend"
+    - wait_event_type:
+        usage: "LABEL"
+        description: "The type of event for which the backend is waiting, if any; otherwise NULL"
+    - wait_event:
+        usage: "LABEL"
+        description: "Wait event name if backend is currently waiting, otherwise NULL."
+    - total:
+        usage: "GUAGE"
+        description: "Total number of backends in this state"
+
+pg_stat_activity_query_time:
+  query: |
+    SELECT
+      datname,
+      usename,
+      application_name,
+      GREATEST(EXTRACT(EPOCH FROM statement_timestamp() - MIN(query_start)),0)
+    FROM pg_stat_activity
+    WHERE state = 'active' AND usename IS NOT NULL AND datname IS NOT NULL
+    GROUP BY datname, usename, application_name;
+
+  metrics:
+    - usename:
+        usage: "LABEL"
+        description: "Name of the user logged into this backend"
+    - datname:
+        usage: "LABEL"
+        description: "Name of the database this backend is connected to"
+    - application_name:
+        usage: "LABEL"
+        description: "Name of the application that is connected to this backend"
+    - age:
+        usage: "GUAGE"
+        description: "Age in seconds of oldest active query"
+
+
+pg_stat_activity_transaction_time:
+  query: |
+    SELECT
+      datname,
+      usename,
+      application_name,
+      GREATEST(EXTRACT(EPOCH FROM statement_timestamp() - MIN(xact_start)),0)
+    FROM pg_stat_activity
+    WHERE state != 'idle' AND usename IS NOT NULL AND datname IS NOT NULL
+    GROUP BY datname, usename, application_name;
+
+  metrics:
+    - usename:
+        usage: "LABEL"
+        description: "Name of the user logged into this backend"
+    - datname:
+        usage: "LABEL"
+        description: "Name of the database this backend is connected to"
+    - application_name:
+        usage: "LABEL"
+        description: "Name of the application that is connected to this backend"
+    - age:
+        usage: "GUAGE"
+        description: "Age in seconds of oldest transaction"
