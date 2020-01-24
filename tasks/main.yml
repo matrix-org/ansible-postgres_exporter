@@ -1,8 +1,11 @@
 ---
 - name: Ensure dependencies installed
   apt: 
-    name: git,make,golang
-    state: installed
+    name: 
+      - git
+      - make
+      - golang
+    state: present
 
 - name: Create user
   user:
