@@ -5,7 +5,7 @@ Description="Prometheus Postgres Exporter (postgres_exporter)"
 Type=simple
 WorkingDirectory=/opt/postgres_exporter
 # and the award for the most uses of the name of the app in a single commandline goes to:
-ExecStart=/opt/postgres_exporter/src/postgres_exporter/postgres_exporter --web.listen-address={{ postgres_exporter_web_listen_address }} --extend.query-path="/opt/postgres_exporter/queries.yaml"
+ExecStart=/opt/postgres_exporter/bin/postgres_exporter_v{{ postgres_exporter_version}}_linux-amd64/postgres_exporter --web.listen-address={{ postgres_exporter_web_listen_address }} --extend.query-path="/opt/postgres_exporter/queries.yaml"
 User=postgres
 Group=postgres
 Restart=always

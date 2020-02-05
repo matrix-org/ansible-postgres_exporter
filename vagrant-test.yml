@@ -2,3 +2,5 @@
   roles:
     - role: ansible-postgres_exporter
       become: true
+  vars:
+    postgres_exporter_data_source_name: "host=/tmp dbname=postgres"
