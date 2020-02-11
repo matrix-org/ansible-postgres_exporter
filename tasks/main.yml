@@ -1,56 +1,38 @@
 ---
-- name: Ensure dependencies installed
-  apt: 
-    name: 
-      - git
-      - make
-      - golang
-    state: present
-
 - name: Create user
   user:
     name: postgres
     state: present
     create_home: no
 
-- name: Make directory
+- name: Make directories
   file:
-    path: /opt/postgres_exporter
+    path: "{{ item }}"
     state: directory
     owner: postgres
     group: postgres
+  loop:
+    - "/opt/postgres_exporter"
+    - "/opt/postgres_exporter/tarballs"
+    - "/opt/postgres_exporter/bin"
 
-- name: Make src directory
-  file:
-    path: /opt/postgres_exporter/src
-    state: directory
+- name: Get postgres_exporter from github
+  get_url:
+    url: https://github.com/wrouesnel/postgres_exporter/releases/download/v{{ postgres_exporter_version }}/postgres_exporter_v{{ postgres_exporter_version }}_linux-amd64.tar.gz
+    dest: /opt/postgres_exporter/tarballs/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64.tar.gz
     owner: postgres
     group: postgres
+    checksum: "{{ postgres_exporter_version_checksum }}"
 
-
-- name: checkout postgres_exporter
-  git:
-    repo: https://github.com/matrix-org/postgres_exporter.git
-    dest: /opt/postgres_exporter/src/postgres_exporter
-    version: matrix.org
-  become: true
-  become_user: postgres
-  vars:
-    ansible_ssh_pipelining: true
-
-- name: Go Get (?)
-  command: go get
-  args:
-    chdir: /opt/postgres_exporter/src/postgres_exporter/
-  environment:
-    GOPATH: /opt/postgres_exporter/
-
-- name: Build
-  make:
-    chdir: /opt/postgres_exporter/src/postgres_exporter/
-    target: binary
-  environment:
-    GOPATH: /opt/postgres_exporter/
+- name: Unpack postgres_exporter into location
+  unarchive:
+    src: /opt/postgres_exporter/tarballs/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64.tar.gz
+    dest: /opt/postgres_exporter/bin/
+    owner: postgres
+    group: postgres
+    remote_src: yes
+  notify:
+    - "restart postgres_exporter"
 
 - name: Template queries.yaml
   template:
@@ -58,6 +40,7 @@
     dest: /opt/postgres_exporter/queries.yaml
     owner: postgres
     group: postgres
+    mode: "u=rw,g=r,o=r"
   notify:
     - "restart postgres_exporter"
 
@@ -66,6 +49,8 @@
     src: postgres_exporter.service.j2
     dest: /etc/systemd/system/postgres_exporter.service
     owner: root
+    group: root
+    mode: "u=rw,g=r,o=r"
   notify:
     - "reload systemd"
     - "restart postgres_exporter"
