@@ -40,6 +40,7 @@
     dest: /opt/postgres_exporter/queries.yaml
     owner: postgres
     group: postgres
+    mode: "u=rw,g=r,o=r"
   notify:
     - "restart postgres_exporter"
 
@@ -48,6 +49,8 @@
     src: postgres_exporter.service.j2
     dest: /etc/systemd/system/postgres_exporter.service
     owner: root
+    group: root
+    mode: "u=rw,g=r,o=r"
   notify:
     - "reload systemd"
     - "restart postgres_exporter"
